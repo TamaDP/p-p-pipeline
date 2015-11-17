@@ -29,7 +29,6 @@ while ( <SEQFILE> ) {
 	chomp $_ ;
 	if ( $_ =~ m/^>/ ) {
 		my @first_column = substr((split(/|/,$_)),1); 	  #This adds the header line in fasta file to the table for each peptide
-		print @first_column;
 		printf ("%-11s \t %-11s \t", @first_column);	  # and knocks off the >
 	} elsif ( $_ =~ /^A..Z/ ) {
 		my $mz = &mz_converter($_);			  # This uses subroutine (below) to get m/z values
