@@ -1,0 +1,91 @@
+#!usr/bin/env perl
+
+package ProNTo::seqMasses;
+
+use warnings;
+use Getopt::Long;
+
+sub main {
+	if (@ARGV < 3) {
+	die "Not enough arguments \n"
+}
+
+#must be 2 arguments
+# --mass-type of either average or monoisotopic (with either "a" or "m" without quotes respectively)
+# --input source
+
+my $z = $ARGV [2]; # the ion charge specified by the command line
+
+my @header = ("Protein", "Peptide Number", "Sequence", "m/z", "z", "Missed Cleavages"); 
+
+printf ("%-s \t %-s \t %-s \t %-8s \t %s \t %s \n", @header);
+#The above two lines print the headers of each column for the table in corrct format
+
+my $file = $ARGV[0];
+
+open(SEQFILE,$file) or die "Unable to open file $file\n";
+
+while ( <SEQFILE> ) {
+	chomp $_ ;
+	if ( $_ =~ m/^>/ ) {
+		my @first_column = substr((split(/|/,$_)),1); 	  #This adds the header line in fasta file to the table for each peptide
+		print @first_column;
+		printf ("%-11s \t %-11s \t", @first_column);	  # and knocks off the >
+	} elsif ( $_ =~ /^A..Z/ ) {
+		my $mz = &mz_converter($_);			  # This uses subroutine (below) to get m/z values
+		my @seqdata = ($_, $mz, $z);
+		printf ('%-s \t %-8f \t %d \t %d \n',@seqdata);
+	} else { die ("$file in wrong format \n") 		  	  # Detects whether the file is in correct format
+	} 
+	printf ;	#Creates table
+}
+
+close (SEQFILE) or die "Unable to close file $file\n";
+}
+# The subroutine is not specifically required for this program but it makes the while loop
+# much easier to read and follow
+
+sub massTable {
+	my $mass_type = shift;
+	if ($mass_type eq 'm') {
+	#monoisotopic masses
+	my %s2m = (A =>  71.0371, C => 103.0092, D => 115.0269, E => 129.0426,
+		   F => 147.0684, G =>  57.0215, H => 137.0589, I => 113.0841,
+		   K => 128.0950, L => 113.0841, M => 131.0405, N => 114.0429,
+		   P =>  97.0528, Q => 128.0586, R => 156.1011, S =>  87.0320,
+		   T => 101.0477, V =>  99.0684, W => 186.0793, Y => 163.0633,
+		   '\s' => 0.0, "*" => 0.0
+		   );
+		   return %s2m;
+       } elsif ($mass_type eq 'a') {
+       	# average masses
+	my %s2a = (A =>  71.08, C => 103.14, D => 115.09, E => 129.12,
+		   F => 147.18, G =>  57.05, H => 137.14, I => 113.16,
+		   K => 128.17, L => 113.16, M => 131.19, N => 114.10,
+		   P =>  97.12, Q => 128.13, R => 156.19, S =>  87.08,
+		   T => 101.10, V =>  99.13, W => 186.21, Y => 163.18,
+		   '\s' => 0.0, "*" => 0.0
+		   );
+		   return %s2a;
+	} else {
+		die ("Mass type must be either monoisotopic or average")
+	}
+}
+
+sub mz_converter {		   
+	if ($ARGV[1] == "a") {
+		# This is for the user definition in the command line to which masses are used
+		my %ref = my %s2m;
+		my $water = 18.0106
+	} elsif ($ARGV[1] == "m") {
+		my %ref = my %s2a;
+		my $water = 18.0153
+	} else{
+		die "Argument for masses not recognised \n"
+	}
+		my @residues = split(//,$_); 			   #splits sequence data into parts
+		my @residue_mass = map{$ref{$_}}@residues; 	   #uses hashes to find masses
+		my $residue_mass = join ("+", @residue_mass);
+		return(($residue_mass + my $water)/$z);
+}
+
